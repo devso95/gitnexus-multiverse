@@ -348,7 +348,12 @@ export const createAnalyzeRouter = (): Router => {
       const configMap = await resolveConfig(svc.id, repoPath);
 
       const { llmResolveSinks } = await import('../engine/llm-sink-resolver.js');
-      const result = await llmResolveSinks(svc.id, repoPath, configMap, llmConfig);
+      const result = await llmResolveSinks(svc.id, repoPath, configMap, llmConfig, {
+        mode: req.body?.mode,
+        limit: req.body?.limit,
+        batchSize: req.body?.batchSize,
+        onlyUnresolved: req.body?.onlyUnresolved,
+      });
 
       // Re-link if any sinks were resolved
       if (result.resolved > 0) {
@@ -359,6 +364,62 @@ export const createAnalyzeRouter = (): Router => {
       res.json(result);
     } catch (err: unknown) {
       mvLog.error(LOG, `Resolve-sinks failed for ${req.params.id}`, err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // GET /api/mv/services/:id/resolve-report — unresolved stats and reasons
+  router.get('/:id/resolve-report', async (req, res) => {
+    try {
+      const svc = await getService(req.params.id);
+      if (!svc) {
+        res.status(404).json({ error: `Service "${req.params.id}" not found` });
+        return;
+      }
+      const { getGraphBackend } = await import('../../core/graph-backend/index.js');
+      const backend = await getGraphBackend();
+      const rows = (await backend.executeQuery(
+        `MATCH (d:DetectedSink {repoId: $serviceId})
+         RETURN
+           count(d) AS total,
+           sum(CASE WHEN coalesce(d.resolutionStatus,'unresolved') = 'resolved' THEN 1 ELSE 0 END) AS resolved,
+           sum(CASE WHEN coalesce(d.resolutionStatus,'unresolved') <> 'resolved' THEN 1 ELSE 0 END) AS unresolved,
+           avg(coalesce(d.resolutionConfidence, 0)) AS avgConfidence`,
+        { serviceId: svc.id },
+      )) as Array<{
+        total?: number;
+        resolved?: number;
+        unresolved?: number;
+        avgConfidence?: number;
+      }>;
+      const reasonRows = (await backend.executeQuery(
+        `MATCH (d:DetectedSink {repoId: $serviceId})
+         WHERE coalesce(d.resolutionStatus,'unresolved') <> 'resolved'
+         RETURN coalesce(d.resolutionReason, 'insufficient_context') AS reason, count(*) AS count
+         ORDER BY count DESC`,
+        { serviceId: svc.id },
+      )) as Array<{ reason: string; count: number }>;
+      const patternRows = (await backend.executeQuery(
+        `MATCH (d:DetectedSink {repoId: $serviceId})
+         WHERE coalesce(d.resolutionStatus,'unresolved') <> 'resolved'
+         RETURN coalesce(d.patternId, 'unknown') AS patternId, count(*) AS count
+         ORDER BY count DESC
+         LIMIT 10`,
+        { serviceId: svc.id },
+      )) as Array<{ patternId: string; count: number }>;
+
+      const summary = rows[0] || {};
+      res.json({
+        serviceId: svc.id,
+        total: summary.total || 0,
+        resolved: summary.resolved || 0,
+        unresolved: summary.unresolved || 0,
+        avgConfidence: Number(summary.avgConfidence || 0),
+        reasons: reasonRows,
+        topUnresolvedPatterns: patternRows,
+      });
+    } catch (err: unknown) {
+      mvLog.error(LOG, `Resolve-report failed for ${req.params.id}`, err);
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });

@@ -103,6 +103,9 @@ gitnexus/vendor/**/node_modules/
 
 local_docs/
 
+# Local project workspace (plan, mockups, design docs)
+local/
+
 # Local agent scratch / review prompts (never commit)
 .tmp/
 .agents/

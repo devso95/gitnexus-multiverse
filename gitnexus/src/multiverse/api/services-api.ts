@@ -197,7 +197,10 @@ export const createServicesRouter = (): Router => {
                ds.sinkType AS type, ds.patternId AS pattern, ds.targetExpression AS expr,
                ds.filePath AS file, ds.lineNumber AS line,
                ds.resolvedUrl AS resolvedUrl, ds.resolvedTopic AS resolvedTopic,
-               ds.resolvedVia AS resolvedVia, ds.confidence AS confidence
+               ds.resolvedVia AS resolvedVia, ds.confidence AS confidence,
+               ds.resolutionStatus AS resolutionStatus, ds.resolutionConfidence AS resolutionConfidence,
+               ds.resolutionReason AS resolutionReason, ds.resolutionMethod AS resolutionMethod,
+               ds.resolutionEvidence AS resolutionEvidence
         ORDER BY ds.sinkType, ds.confidence DESC
       `,
         { repoId },
@@ -208,7 +211,9 @@ export const createServicesRouter = (): Router => {
           s.resolvedVia && s.resolvedVia !== 'unresolvable'
             ? s.resolvedUrl || s.resolvedTopic || null
             : null,
-        status: !s.resolvedVia || s.resolvedVia === 'unresolvable' ? 'unresolved' : 'resolved',
+        status:
+          (s.resolutionStatus as string) ||
+          (!s.resolvedVia || s.resolvedVia === 'unresolvable' ? 'unresolved' : 'resolved'),
       }));
       res.json({
         service: repoId,

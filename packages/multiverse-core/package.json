@@ -1,0 +1,9 @@
+{
+  "name": "@gitnexus/multiverse-core",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../gitnexus/node_modules/tsx/dist/cli.mjs src/cli.ts",
+    "typecheck": "node ../../gitnexus/node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
+  }
+}

@@ -373,6 +373,12 @@ export const persistSinks = async (repoId: string, sinks: DetectedSink[]): Promi
       resolvedTopic: '',
       confidence: 0,
       resolvedVia: '',
+      resolutionStatus: 'unresolved',
+      resolutionConfidence: 0,
+      resolutionMethod: '',
+      resolutionEvidence: '',
+      resolutionReason: 'insufficient_context',
+      resolutionUpdatedAt: '',
     }));
     await backend.executeQuery(
       `

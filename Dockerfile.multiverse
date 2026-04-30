@@ -9,11 +9,11 @@ RUN --mount=type=cache,target=/root/.npm npm ci --prefix gitnexus-shared
 COPY gitnexus-shared ./gitnexus-shared
 RUN rm -f gitnexus-shared/tsconfig.tsbuildinfo && npm run build --prefix gitnexus-shared
 
-# Build gitnexus-multiverse-web
-COPY gitnexus-multiverse-web/package.json gitnexus-multiverse-web/package-lock.json ./gitnexus-multiverse-web/
-RUN --mount=type=cache,target=/root/.npm npm ci --prefix gitnexus-multiverse-web
-COPY gitnexus-multiverse-web ./gitnexus-multiverse-web
-RUN npm run build --prefix gitnexus-multiverse-web
+# Build multiverse web package
+COPY packages/multiverse-web/package.json packages/multiverse-web/package-lock.json ./packages/multiverse-web/
+RUN --mount=type=cache,target=/root/.npm npm ci --prefix packages/multiverse-web
+COPY packages/multiverse-web ./packages/multiverse-web
+RUN npm run build --prefix packages/multiverse-web
 
 # Build gitnexus
 COPY gitnexus/package.json gitnexus/package-lock.json ./gitnexus/
@@ -44,7 +44,7 @@ COPY --from=builder --chown=node:node /app/gitnexus/package.json ./gitnexus/pack
 COPY --from=builder --chown=node:node /app/gitnexus/vendor ./gitnexus/vendor
 COPY --from=builder --chown=node:node /app/gitnexus-shared/package.json ./gitnexus-shared/package.json
 COPY --from=builder --chown=node:node /app/gitnexus-shared/dist ./gitnexus-shared/dist
-COPY --from=builder --chown=node:node /app/gitnexus-multiverse-web/dist ./gitnexus-multiverse-web/dist
+COPY --from=builder --chown=node:node /app/packages/multiverse-web/dist ./packages/multiverse-web/dist
 
 USER node
 

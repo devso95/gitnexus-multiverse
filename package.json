@@ -1,12 +1,18 @@
 {
   "name": "gitnexus-monorepo",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "prepare": "husky",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
-    "lint:fix": "eslint --fix ."
+    "lint:fix": "eslint --fix .",
+    "multiverse:dev": "npm run dev --workspace @gitnexus/multiverse-core",
+    "multiverse:web:dev": "npm run dev --workspace @gitnexus/multiverse-web",
+    "multiverse:web:build": "npm run build --workspace @gitnexus/multiverse-web"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.57.2",

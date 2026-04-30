@@ -205,18 +205,18 @@ async function sourceClass(params: Record<string, unknown>) {
     class: { id: cls.id, name: cls.name, file: cls.filePath, annotations: cls.annotations },
     valueFields,
     injectedBeans,
-    fields: (fields as any[]).map((f) => ({
+    fields: (fields as Array<Record<string, unknown>>).map((f) => ({
       name: f.name,
       type: f.type,
       annotations: f.annotations,
     })),
-    methods: (methods as any[]).map((m) => ({
+    methods: (methods as Array<Record<string, unknown>>).map((m) => ({
       id: m.id,
       name: m.name,
       line: m.line,
       annotations: m.annotations,
     })),
-    interfaces: (interfaces as any[]).map((i) => i.name),
+    interfaces: (interfaces as Array<Record<string, unknown>>).map((i) => i.name),
   };
   if (configPrefix) result.configPrefix = configPrefix;
   if (sourceCode) result.source = sourceCode;
@@ -251,17 +251,28 @@ async function sourceMethod(params: Record<string, unknown>) {
   if (!rows.length) return { error: 'Method not found' };
 
   const repoPath = await getRepoPath(service);
-  const results = rows.map((m: any) => {
-    const fullPath = path.join(repoPath, m.filePath);
+  const methodRows = rows as Array<{
+    id?: string;
+    name?: string;
+    filePath?: string;
+    startLine?: number;
+    endLine?: number;
+    annotations?: string;
+    qualifiedName?: string;
+  }>;
+  const results = methodRows.map((m) => {
+    const startLine = Number(m.startLine || 1);
+    const endLine = Number(m.endLine || startLine + 30);
+    const fullPath = path.join(repoPath, String(m.filePath || ''));
     const body =
       m.startLine && m.endLine
-        ? readLines(fullPath, Math.max(1, m.startLine - 2), m.endLine + 1)
-        : readLines(fullPath, m.startLine || 1, (m.startLine || 1) + 30);
+        ? readLines(fullPath, Math.max(1, startLine - 2), endLine + 1)
+        : readLines(fullPath, startLine, startLine + 30);
     return {
       id: m.id,
       name: m.name,
       file: m.filePath,
-      line: m.startLine,
+      line: startLine,
       annotations: m.annotations,
       qualifiedName: m.qualifiedName,
       body,
@@ -273,8 +284,12 @@ async function sourceMethod(params: Record<string, unknown>) {
 
 // ── callers: who calls a method, with call-site snippet ──
 
-async function sourceCallers(params: Record<string, any>) {
-  const { service, nodeId, name, file, limit = 20 } = params;
+async function sourceCallers(params: Record<string, unknown>) {
+  const service = params.service as string;
+  const nodeId = params.nodeId as string | undefined;
+  const name = params.name as string | undefined;
+  const file = params.file as string | undefined;
+  const limit = Number(params.limit || 20);
   if (!service) return { error: 'Required: service' };
   if (!nodeId && !name) return { error: 'Required: nodeId or name' };
 
@@ -302,14 +317,24 @@ async function sourceCallers(params: Record<string, any>) {
     .catch(() => []);
 
   const repoPath = await getRepoPath(service);
-  const results = callers.map((c: any) => {
+  const callerRows = callers as Array<{
+    id?: string;
+    name?: string;
+    file?: string;
+    service?: string;
+    startLine?: number;
+    endLine?: number;
+  }>;
+  const results = callerRows.map((c) => {
     const callerRepoPath = c.service === service ? repoPath : null;
+    const startLine = Number(c.startLine || 1);
+    const endLine = Number(c.endLine || startLine + 20);
     let snippet: string | null = null;
     if (callerRepoPath) {
-      const fullPath = path.join(callerRepoPath, c.file);
-      snippet = readLines(fullPath, c.startLine || 1, c.endLine || (c.startLine || 1) + 20);
+      const fullPath = path.join(callerRepoPath, String(c.file || ''));
+      snippet = readLines(fullPath, startLine, endLine);
     }
-    return { id: c.id, name: c.name, file: c.file, service: c.service, line: c.startLine, snippet };
+    return { id: c.id, name: c.name, file: c.file, service: c.service, line: startLine, snippet };
   });
 
   return { target: targetId, callers: results, total: results.length };
@@ -317,8 +342,11 @@ async function sourceCallers(params: Record<string, any>) {
 
 // ── grep: regex search in service source files ──
 
-async function sourceGrep(params: Record<string, any>) {
-  const { service, pattern, filePattern, maxResults = 30 } = params;
+async function sourceGrep(params: Record<string, unknown>) {
+  const service = params.service as string;
+  const pattern = params.pattern as string;
+  const filePattern = params.filePattern as string | undefined;
+  const maxResults = Number(params.maxResults || 30);
   if (!service || !pattern) return { error: 'Required: service, pattern' };
 
   const repoPath = await getRepoPath(service);

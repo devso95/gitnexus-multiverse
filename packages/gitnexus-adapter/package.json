@@ -1,0 +1,8 @@
+{
+  "name": "@gitnexus/gitnexus-adapter",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "node ../../gitnexus/node_modules/typescript/bin/tsc --noEmit -p tsconfig.json"
+  }
+}

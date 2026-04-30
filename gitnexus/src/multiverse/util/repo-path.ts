@@ -8,9 +8,7 @@ export interface ResolvedServiceRepoPath {
   source: 'localPath' | 'repoSlug' | 'serviceId';
 }
 
-export async function resolveServiceRepoPath(
-  serviceId: string,
-): Promise<ResolvedServiceRepoPath> {
+export async function resolveServiceRepoPath(serviceId: string): Promise<ResolvedServiceRepoPath> {
   const config = await loadConfig();
   const service = await getService(serviceId).catch(() => null);
 
@@ -28,4 +26,3 @@ export async function resolveServiceRepoPath(
 
   return candidates.find((candidate) => fs.existsSync(candidate.repoPath)) || candidates[0];
 }
-

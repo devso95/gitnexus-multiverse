@@ -38,12 +38,18 @@ export async function handleSinks(params: Record<string, unknown>): Promise<unkn
 
 // ── list — rich filters + groupBy + optional enrich ──
 
-async function sinksList(params: Record<string, any>) {
-  const { service, status, type, category, groupBy, limit = 50, enrich = false } = params;
+async function sinksList(params: Record<string, unknown>) {
+  const service = params.service as string | undefined;
+  const status = params.status as string | undefined;
+  const type = params.type as string | undefined;
+  const category = params.category as string | undefined;
+  const groupBy = params.groupBy as string | undefined;
+  const limit = Number(params.limit || 50);
+  const enrich = Boolean(params.enrich);
   const backend = await getGraphBackend();
 
   const conditions: string[] = [];
-  const qp: Record<string, any> = {};
+  const qp: Record<string, unknown> = {};
 
   if (service) {
     conditions.push('d.repoId = $service');
@@ -81,17 +87,18 @@ async function sinksList(params: Record<string, any>) {
     .catch(() => [])) as Array<Record<string, unknown>>;
 
   // Enrich: attach source context + class metadata per unique file
-  let fileContext: Record<string, any> | undefined;
+  let fileContext: Record<string, unknown> | undefined;
   if (enrich && service && rows.length > 0) {
     fileContext = await enrichSinksWithContext(rows, service);
   }
 
   if (groupBy === 'calleeMethod') {
-    const groups = new Map<string, any[]>();
+    const groups = new Map<string, Array<Record<string, unknown>>>();
     for (const r of rows) {
       const key = String(r.method || 'unknown');
       if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(r);
+      const group = groups.get(key);
+      if (group) group.push(r);
     }
     const grouped = [...groups.entries()].map(([method, sinks]) => {
       const isWrapper =
@@ -127,7 +134,7 @@ async function sinksList(params: Record<string, any>) {
  * Returns fileContext map (classInfo per file) separately to avoid duplication.
  */
 async function enrichSinksWithContext(
-  sinks: Record<string, any>[],
+  sinks: Array<{ file?: string; line?: number; sourceSnippet?: string; [key: string]: unknown }>,
   service: string,
 ): Promise<Record<string, unknown>> {
   const pathMod = await import('path');
@@ -141,12 +148,13 @@ async function enrichSinksWithContext(
   >();
 
   const getFileData = (filePath: string) => {
-    if (fileCache.has(filePath)) return fileCache.get(filePath)!;
+    const cached = fileCache.get(filePath);
+    if (cached) return cached;
 
     const fullPath = pathMod.join(repoPath, filePath);
     if (!fs.existsSync(fullPath)) {
       fileCache.set(filePath, { lines: [], classInfo: null });
-      return fileCache.get(filePath)!;
+      return { lines: [], classInfo: null };
     }
 
     const content = fs.readFileSync(fullPath, 'utf-8');
@@ -193,7 +201,7 @@ async function enrichSinksWithContext(
 
     const classInfo = { valueFields, injectedBeans, configPrefix };
     fileCache.set(filePath, { lines, classInfo });
-    return fileCache.get(filePath)!;
+    return { lines, classInfo };
   };
 
   // Attach source snippet per sink
@@ -203,7 +211,7 @@ async function enrichSinksWithContext(
     if (!lines.length) continue;
 
     // 10 lines around sink: 6 before + 3 after — enough to see URI construction
-    const sinkLine = sink.line || 1;
+    const sinkLine = Number(sink.line || 1);
     const start = Math.max(0, sinkLine - 7);
     const end = Math.min(lines.length, sinkLine + 3);
     sink.sourceSnippet = lines
@@ -213,7 +221,7 @@ async function enrichSinksWithContext(
   }
 
   // Return classInfo as a separate map keyed by file — avoids duplication
-  const fileContext: Record<string, any> = {};
+  const fileContext: Record<string, unknown> = {};
   for (const [filePath, data] of fileCache) {
     if (data.classInfo) fileContext[filePath] = data.classInfo;
   }
@@ -222,8 +230,9 @@ async function enrichSinksWithContext(
 
 // ── analyze — source context + callers + suggestions ──
 
-async function sinksAnalyze(params: Record<string, any>) {
-  const { sinkId, service } = params;
+async function sinksAnalyze(params: Record<string, unknown>) {
+  const sinkId = params.sinkId as string | undefined;
+  const service = params.service as string | undefined;
   if (!sinkId && !service) return { error: 'Required: sinkId or service' };
 
   const backend = await getGraphBackend();
@@ -292,7 +301,7 @@ async function sinksAnalyze(params: Record<string, any>) {
   }
 
   // Suggest resolutions for callers by scanning their source
-  const callerAnalysis: any[] = [];
+  const callerAnalysis: Array<Record<string, unknown>> = [];
   for (const caller of callers) {
     const callerFile = path.join(repoPath, caller.file);
     let argExpression = '';
@@ -387,17 +396,30 @@ async function sinksAnalyze(params: Record<string, any>) {
 
 // ── resolve — batch resolve ──
 
-async function sinksResolve(params: Record<string, any>) {
-  const { resolutions, sinkId, value, confidence = 0.7 } = params;
+async function sinksResolve(params: Record<string, unknown>) {
+  const resolutions = params.resolutions as
+    | Array<{ sinkId: string; value: string; confidence?: number }>
+    | undefined;
+  const sinkId = params.sinkId as string | undefined;
+  const value = params.value as string | undefined;
+  const confidence = Number(params.confidence || 0.7);
 
   // Single resolve (backward compat)
   const items: Array<{ sinkId: string; value: string; confidence: number }> =
-    resolutions || (sinkId && value ? [{ sinkId, value, confidence }] : []);
+    (resolutions || []).map((r) => ({
+      sinkId: r.sinkId,
+      value: r.value,
+      confidence: Number(r.confidence ?? confidence),
+    })) || [];
+  if (items.length === 0 && sinkId && value) {
+    items.push({ sinkId, value, confidence });
+  }
 
   if (!items.length) return { error: 'Required: resolutions array or sinkId + value' };
 
   const backend = await getGraphBackend();
-  const results: any[] = [];
+  const results: Array<{ sinkId: string; resolved?: string; confidence?: number; error?: string }> =
+    [];
 
   for (const item of items) {
     const sinkRows = await backend
@@ -456,8 +478,9 @@ async function sinksResolve(params: Record<string, any>) {
 
 // ── promote — wrapper sink → N caller-sinks ──
 
-async function sinksPromote(params: Record<string, any>) {
-  const { sinkId, wrapperConfig } = params;
+async function sinksPromote(params: Record<string, unknown>) {
+  const sinkId = params.sinkId as string | undefined;
+  const wrapperConfig = params.wrapperConfig as { targetArgIndex?: number } | undefined;
   if (!sinkId) return { error: 'Required: sinkId' };
 
   const targetArgIndex = wrapperConfig?.targetArgIndex ?? 0;
@@ -493,7 +516,7 @@ async function sinksPromote(params: Record<string, any>) {
   const repoPath = (await resolveServiceRepoPath(svcId)).repoPath;
 
   const wrapperMethodName = sink.callSiteMethod;
-  const callerSinks: any[] = [];
+  const callerSinks: Array<Record<string, unknown>> = [];
 
   for (const caller of callers) {
     const callerFile = pathMod.join(repoPath, caller.file);
@@ -577,8 +600,10 @@ async function sinksPromote(params: Record<string, any>) {
 
 // ── fan-out — promote + auto-resolve ──
 
-async function sinksFanOut(params: Record<string, any>) {
-  const { sinkId, targetArgIndex = 0, autoResolve = true } = params;
+async function sinksFanOut(params: Record<string, unknown>) {
+  const sinkId = params.sinkId as string | undefined;
+  const targetArgIndex = Number(params.targetArgIndex || 0);
+  const autoResolve = params.autoResolve !== false;
   if (!sinkId) return { error: 'Required: sinkId' };
 
   // Step 1: Promote
@@ -603,8 +628,15 @@ async function sinksFanOut(params: Record<string, any>) {
   const { resolveConfig } = await import('../engine/config-resolver.js');
   const configMap = await resolveConfig(svcId, repoPath);
 
-  const results: any[] = [];
-  for (const cs of promoteResult.callerSinks) {
+  const results: Array<Record<string, unknown>> = [];
+  const callerSinks = promoteResult.callerSinks as Array<{
+    id: string;
+    file: string;
+    line: number;
+    target: string;
+    [key: string]: unknown;
+  }>;
+  for (const cs of callerSinks) {
     const target = cs.target;
     let resolved: string | null = null;
     let via = 'unresolved';
@@ -687,8 +719,8 @@ async function sinksFanOut(params: Record<string, any>) {
       await saveManualResolution({
         serviceId: svcId,
         patternId: sinkRows[0]?.s?.patternId || '',
-        filePath: cs.file,
-        lineNumber: cs.line,
+        filePath: String(cs.file || ''),
+        lineNumber: Number(cs.line || 0),
         resolvedValue: resolved,
         sinkType,
         confidence: conf,
@@ -718,7 +750,7 @@ async function sinksFanOut(params: Record<string, any>) {
 
 // ── llm-resolve — resolve one or many sinks with configured LLM ──
 
-async function sinksLlmResolve(params: Record<string, any>) {
+async function sinksLlmResolve(params: Record<string, unknown>) {
   let service = params.service as string | undefined;
   const sinkId = params.sinkId as string | undefined;
   const relink = params.relink as boolean | undefined;

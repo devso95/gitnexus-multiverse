@@ -302,7 +302,15 @@ export const startMultiverseServer = async (
     try {
       const sessionId = req.headers['mcp-session-id'] as string | undefined;
       if (sessionId && mcpSessions.has(sessionId)) {
-        const s = mcpSessions.get(sessionId)!;
+        const s = mcpSessions.get(sessionId);
+        if (!s) {
+          res.status(404).json({
+            jsonrpc: '2.0',
+            error: { code: -32001, message: 'Session not found' },
+            id: null,
+          });
+          return;
+        }
         s.lastActivity = Date.now();
         await s.transport.handleRequest(req, res, req.body);
       } else if (sessionId) {
@@ -319,13 +327,24 @@ export const startMultiverseServer = async (
         await server.connect(transport);
         await transport.handleRequest(req, res, req.body);
         if (transport.sessionId) {
-          mcpSessions.set(transport.sessionId, { server, transport, lastActivity: Date.now() });
-          transport.onclose = () => mcpSessions.delete(transport.sessionId!);
+          const createdSessionId = transport.sessionId;
+          mcpSessions.set(createdSessionId, { server, transport, lastActivity: Date.now() });
+          transport.onclose = () => {
+            if (transport.sessionId) mcpSessions.delete(transport.sessionId);
+          };
         }
       } else if (req.method === 'GET') {
         // SSE listener for existing session
         if (sessionId && mcpSessions.has(sessionId)) {
-          const s = mcpSessions.get(sessionId)!;
+          const s = mcpSessions.get(sessionId);
+          if (!s) {
+            res.status(404).json({
+              jsonrpc: '2.0',
+              error: { code: -32001, message: 'Session not found' },
+              id: null,
+            });
+            return;
+          }
           await s.transport.handleRequest(req, res, req.body);
         } else {
           res.status(400).json({
@@ -343,13 +362,11 @@ export const startMultiverseServer = async (
       }
     } catch (err: unknown) {
       if (!res.headersSent)
-        res
-          .status(500)
-          .json({
-            jsonrpc: '2.0',
-            error: { code: -32000, message: err instanceof Error ? err.message : String(err) },
-            id: null,
-          });
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: { code: -32000, message: err instanceof Error ? err.message : String(err) },
+          id: null,
+        });
     }
   });
 
@@ -374,9 +391,13 @@ export const startMultiverseServer = async (
   mvLog.info(LOG, 'MCP endpoint mounted at /mcp');
 
   // ── Static Admin UI (React SPA build output) ──
-  const webDist = path.resolve(__dirname, '..', '..', '..', 'gitnexus-multiverse-web', 'dist');
+  const webDistCandidates = [
+    path.resolve(__dirname, '..', '..', '..', 'packages', 'multiverse-web', 'dist'),
+    path.resolve(__dirname, '..', '..', '..', 'gitnexus-multiverse-web', 'dist'),
+  ];
   const fs = await import('fs');
-  if (fs.existsSync(webDist)) {
+  const webDist = webDistCandidates.find((candidate) => fs.existsSync(candidate));
+  if (webDist) {
     app.use(express.static(webDist));
     // SPA fallback: serve index.html for all non-API routes
     app.get('*', (req, res, next) => {
@@ -387,7 +408,7 @@ export const startMultiverseServer = async (
     app.get('/', (_req, res) => {
       res.send(`<!DOCTYPE html><html><head><title>GitNexus Multiverse</title>
       <style>body{font-family:system-ui;max-width:600px;margin:40px auto;padding:0 20px;color:#e0e0e0;background:#0f1117}a{color:#a29bfe}</style>
-      </head><body><h1>⚡ Multiverse</h1><p>Admin UI not built yet. Run <code>cd ../gitnexus-multiverse-web && npm run build</code> first.</p>
+      </head><body><h1>⚡ Multiverse</h1><p>Admin UI not built yet. Run <code>cd ../packages/multiverse-web && npm run build</code> first.</p>
       <p>API: <a href="/api/ops/health">/api/ops/health</a></p></body></html>`);
     });
   }

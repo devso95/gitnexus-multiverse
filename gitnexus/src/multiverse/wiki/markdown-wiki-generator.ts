@@ -18,6 +18,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { getGraphBackend } from '../../core/graph-backend/index.js';
 import { listServices, type ServiceNode } from '../admin/service-registry.js';
 import { groupEntrypoints } from '../engine/business-grouper.js';
@@ -84,6 +85,18 @@ interface ServiceWikiData {
   businessGroups: Array<{ name: string; entryPointCount: number }>;
   libDeps: string[];
   dependedBy: string[];
+}
+
+interface RagChunk {
+  chunkId: string;
+  serviceId: string;
+  docType: 'overview' | 'api' | 'messaging' | 'dependency' | 'config';
+  title: string;
+  content: string;
+  sourceRefs: string[];
+  tags: string[];
+  updatedAt: string;
+  confidence: number;
 }
 
 // ── Data Fetching ──
@@ -169,9 +182,9 @@ async function fetchServiceWikiData(serviceId: string): Promise<ServiceWikiData 
   }>;
 
   const outbound: OutboundCall[] = outRows
-    .filter((o) => o.targetService)
+    .filter((o): o is typeof o & { targetService: string } => Boolean(o.targetService))
     .map((o) => ({
-      targetService: o.targetService!,
+      targetService: o.targetService,
       type: o.type || 'http',
       target: o.target || '',
       fromMethod: o.fromMethod || '',
@@ -235,7 +248,7 @@ async function fetchServiceWikiData(serviceId: string): Promise<ServiceWikiData 
       { id: serviceId },
     )
     .catch(() => []);
-  const libDeps = libRows.map((r: any) => r.dep);
+  const libDeps = (libRows as Array<{ dep?: string }>).map((r) => r.dep || '').filter(Boolean);
 
   // Depended by
   const depByRows = await backend
@@ -245,7 +258,7 @@ async function fetchServiceWikiData(serviceId: string): Promise<ServiceWikiData 
       { id: serviceId },
     )
     .catch(() => []);
-  const dependedBy = depByRows.map((r: any) => r.dep);
+  const dependedBy = (depByRows as Array<{ dep?: string }>).map((r) => r.dep || '').filter(Boolean);
 
   return {
     service,
@@ -347,7 +360,8 @@ function renderApiEndpoints(data: ServiceWikiData): string {
   for (const r of routes) {
     const key = r.controller || 'Unknown';
     if (!byController.has(key)) byController.set(key, []);
-    byController.get(key)!.push(r);
+    const bucket = byController.get(key);
+    if (bucket) bucket.push(r);
   }
 
   let md = `# API Endpoints — ${s.name}
@@ -480,14 +494,16 @@ function renderDependencies(data: ServiceWikiData): string {
   const outByService = new Map<string, OutboundCall[]>();
   for (const o of outbound) {
     if (!outByService.has(o.targetService)) outByService.set(o.targetService, []);
-    outByService.get(o.targetService)!.push(o);
+    const outBucket = outByService.get(o.targetService);
+    if (outBucket) outBucket.push(o);
   }
 
   // Group inbound by source service
   const inByService = new Map<string, typeof inbound>();
   for (const i of inbound) {
     if (!inByService.has(i.fromService)) inByService.set(i.fromService, []);
-    inByService.get(i.fromService)!.push(i);
+    const inBucket = inByService.get(i.fromService);
+    if (inBucket) inBucket.push(i);
   }
 
   let md = `# Cross-Service Dependencies — ${s.name}
@@ -598,6 +614,140 @@ function renderIndex(services: ServiceNode[], allData: Map<string, ServiceWikiDa
   return md;
 }
 
+function stableChunkId(
+  serviceId: string,
+  docType: RagChunk['docType'],
+  title: string,
+  content: string,
+): string {
+  const h = crypto.createHash('sha1');
+  h.update(serviceId);
+  h.update('|');
+  h.update(docType);
+  h.update('|');
+  h.update(title);
+  h.update('|');
+  h.update(content);
+  return `chunk_${h.digest('hex').slice(0, 20)}`;
+}
+
+function buildRagChunks(data: ServiceWikiData): RagChunk[] {
+  const now = new Date().toISOString();
+  const chunks: RagChunk[] = [];
+  const { service, routes, listeners, outbound, inbound, unresolved, businessGroups } = data;
+
+  const overviewContent = [
+    `Service: ${service.name} (${service.id})`,
+    `Type: ${service.type}`,
+    `Routes: ${routes.length}`,
+    `Listeners: ${listeners.length}`,
+    `Business Groups: ${businessGroups.length}`,
+    `Inbound Services: ${new Set(inbound.map((i) => i.fromService)).size}`,
+    `Outbound Services: ${new Set(outbound.map((o) => o.targetService)).size}`,
+    `Unresolved Sinks: ${unresolved.length}`,
+  ].join('\n');
+  chunks.push({
+    chunkId: stableChunkId(service.id, 'overview', 'Service Overview', overviewContent),
+    serviceId: service.id,
+    docType: 'overview',
+    title: 'Service Overview',
+    content: overviewContent,
+    sourceRefs: [`ServiceNode:${service.id}`],
+    tags: ['overview', service.type, service.repoProject],
+    updatedAt: now,
+    confidence: 0.95,
+  });
+
+  for (const r of routes) {
+    const content = [
+      `Method: ${r.method}`,
+      `Path: ${r.path}`,
+      `Controller: ${r.controller}`,
+      `CalledBy: ${r.calledBy.map((c) => `${c.service}(${c.type})`).join(', ') || 'none'}`,
+    ].join('\n');
+    chunks.push({
+      chunkId: stableChunkId(service.id, 'api', `${r.method} ${r.path}`, content),
+      serviceId: service.id,
+      docType: 'api',
+      title: `${r.method} ${r.path}`,
+      content,
+      sourceRefs: [`Route:${r.id}`],
+      tags: ['api', r.method.toLowerCase(), r.controller || 'unknown'],
+      updatedAt: now,
+      confidence: 0.98,
+    });
+  }
+
+  for (const l of listeners) {
+    const topic = l.resolvedTopic || l.topic;
+    const content = [
+      `Type: ${l.type}`,
+      `Topic: ${topic}`,
+      `Handler: ${l.name}`,
+      `Producers: ${l.calledBy.map((c) => `${c.service}(${c.type})`).join(', ') || 'none'}`,
+    ].join('\n');
+    chunks.push({
+      chunkId: stableChunkId(service.id, 'messaging', `${l.type}:${topic}`, content),
+      serviceId: service.id,
+      docType: 'messaging',
+      title: `${l.type} ${topic}`,
+      content,
+      sourceRefs: [`Listener:${l.id}`],
+      tags: ['messaging', l.type, topic],
+      updatedAt: now,
+      confidence: 0.96,
+    });
+  }
+
+  for (const o of outbound) {
+    const content = [
+      `From Method: ${o.fromMethod}`,
+      `To Service: ${o.targetService}`,
+      `Transport Type: ${o.type}`,
+      `Target: ${o.target}`,
+      `Confidence: ${Math.round(o.confidence * 100)}%`,
+    ].join('\n');
+    chunks.push({
+      chunkId: stableChunkId(
+        service.id,
+        'dependency',
+        `${o.fromMethod}->${o.targetService}`,
+        content,
+      ),
+      serviceId: service.id,
+      docType: 'dependency',
+      title: `${o.fromMethod} -> ${o.targetService}`,
+      content,
+      sourceRefs: [`ServiceNode:${service.id}`, `ServiceNode:${o.targetService}`],
+      tags: ['dependency', 'outbound', o.type],
+      updatedAt: now,
+      confidence: Math.max(0.5, o.confidence || 0.5),
+    });
+  }
+
+  for (const u of unresolved) {
+    const content = [
+      `Sink Type: ${u.sinkType}`,
+      `Method: ${u.method}`,
+      `Expression: ${u.expression}`,
+      `Location: ${u.file}:${u.line}`,
+    ].join('\n');
+    chunks.push({
+      chunkId: stableChunkId(service.id, 'config', `${u.sinkType}:${u.file}:${u.line}`, content),
+      serviceId: service.id,
+      docType: 'config',
+      title: `Unresolved ${u.sinkType} sink at ${u.file}:${u.line}`,
+      content,
+      sourceRefs: [`DetectedSink:${service.id}:${u.file}:${u.line}`],
+      tags: ['config', 'unresolved', u.sinkType],
+      updatedAt: now,
+      confidence: 0.7,
+    });
+  }
+
+  return chunks;
+}
+
 // ── LLM Enrichment ──
 
 /** Build prompt vars from service data */
@@ -635,7 +785,8 @@ function buildPromptVars(data: ServiceWikiData): Record<string, string> {
   for (const r of routes) {
     const key = r.controller || 'Unknown';
     if (!byController.has(key)) byController.set(key, []);
-    byController.get(key)!.push(r);
+    const bucket = byController.get(key);
+    if (bucket) bucket.push(r);
   }
   const routesByController = [...byController.entries()]
     .map(([ctrl, rs]) => `### ${ctrl}\n${rs.map((r) => `- ${r.method} ${r.path}`).join('\n')}`)
@@ -832,6 +983,31 @@ export const generateServiceWiki = async (
     written.push(filePath);
   }
 
+  // RAG corpus artifacts for AI retrieval.
+  const ragDir = path.join(dir, 'rag');
+  fs.mkdirSync(ragDir, { recursive: true });
+  const chunks = buildRagChunks(data);
+  const chunksPath = path.join(ragDir, 'chunks.ndjson');
+  fs.writeFileSync(chunksPath, chunks.map((c) => JSON.stringify(c)).join('\n') + '\n', 'utf-8');
+  written.push(chunksPath);
+  const indexPath = path.join(ragDir, 'index.json');
+  fs.writeFileSync(
+    indexPath,
+    JSON.stringify(
+      {
+        serviceId,
+        generatedAt: new Date().toISOString(),
+        version: 1,
+        chunkCount: chunks.length,
+        docTypes: Array.from(new Set(chunks.map((c) => c.docType))),
+      },
+      null,
+      2,
+    ),
+    'utf-8',
+  );
+  written.push(indexPath);
+
   mvLog.info(
     LOG,
     `${serviceId}: wrote ${written.length} wiki files to ${dir} (llm: ${llmEnriched})`,
@@ -861,8 +1037,8 @@ export const generateAllWiki = async (
         allFiles.push(...result.files);
         if (result.llmEnriched) llmEnriched = true;
       }
-    } catch (err: any) {
-      mvLog.warn(LOG, `Skipping ${s.id}: ${err.message}`);
+    } catch (err: unknown) {
+      mvLog.warn(LOG, `Skipping ${s.id}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

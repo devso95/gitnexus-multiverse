@@ -35,9 +35,9 @@ do_start() {
     (cd "$DIR" && npm run build) || { echo "❌ Build failed"; return 1; }
   fi
 
-  if [ ! -d "$DIR/../gitnexus-multiverse-web/dist" ]; then
+  if [ ! -d "$DIR/../packages/multiverse-web/dist" ]; then
     echo "📦 Building Admin UI..."
-    (cd "$DIR/../gitnexus-multiverse-web" && npm install --silent && npm run build) || true
+    (cd "$DIR/../packages/multiverse-web" && npm install --silent && npm run build) || true
   fi
 
   echo "⚡ Starting Multiverse..."

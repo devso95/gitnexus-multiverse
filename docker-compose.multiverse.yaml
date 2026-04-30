@@ -1,0 +1,67 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: neo4j-multiverse
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-multiverse-pass}
+    ports:
+      - '7474:7474'
+      - '7687:7687'
+    volumes:
+      - neo4j-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  multiverse:
+    build:
+      context: .
+      dockerfile: Dockerfile.multiverse
+      # Enable BuildKit for faster builds and cache mounts
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    container_name: gitnexus-multiverse
+    ports:
+      - '3003:3003'
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-multiverse-pass}
+      - MV_ADMIN_USER=${MV_ADMIN_USER:-admin}
+      - MV_ADMIN_PASS=${MV_ADMIN_PASS:-admin}
+      - MV_WORKSPACE=/data/workspace
+      # HOST_WORKSPACE: the host-side path (for reference/display only).
+      # CONTAINER_WORKSPACE: the fixed Linux path where the host workspace is
+      # mounted inside the container. Always /workspace regardless of OS.
+      # This separation is required on Windows because Docker Desktop translates
+      # Windows paths (e.g. C:\Users\...) on the host side of a volume mount,
+      # but the container side must always be a valid Linux path.
+      - HOST_WORKSPACE=${HOST_WORKSPACE:-/home/deso/Workspace}
+      - CONTAINER_WORKSPACE=/workspace
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL_NAME=${OPENAI_MODEL_NAME:-gpt-4o}
+      # Worker timeout: 120s default handles slow Windows bind-mount I/O.
+      # Raise further (e.g. 300000) if worker pool still times out on very large repos.
+      - GITNEXUS_WORKER_TIMEOUT_MS=${GITNEXUS_WORKER_TIMEOUT_MS:-120000}
+    volumes:
+      - multiverse-workspace:/data/workspace
+      - ./gitnexus/multiverse-config.yml:/app/multiverse-config.yml:ro
+      - ./gitnexus/multiverse-patterns.custom.json:/app/multiverse-patterns.custom.json:ro
+      # Mount host workspace to the fixed container path /workspace.
+      # On Linux/Mac: HOST_WORKSPACE=/home/user/repos → /home/user/repos:/workspace
+      # On Windows:   HOST_WORKSPACE=C:\Users\user\repos → C:\Users\user\repos:/workspace
+      # Docker Desktop handles Windows↔Linux path translation on the host side.
+      - ${HOST_WORKSPACE:-/home/deso/Workspace}:/workspace
+      - ${HOST_GITNEXUS_HOME:-~/.gitnexus}:/data/gitnexus
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  neo4j-data:
+  multiverse-workspace:

@@ -1555,7 +1555,7 @@ describe('TypeScript MethodExtractor', () => {
 
       const annotations = result!.methods[0].annotations;
       expect(annotations).toContain('@Log');
-      expect(annotations).toContain('@deprecated');
+      expect(annotations.some((a) => a.startsWith('@deprecated'))).toBe(true);
     });
 
     it('extracts async method', () => {
@@ -3891,7 +3891,7 @@ class Controller {
       const cls = tree.rootNode.namedChildren.find((c) => c.type === 'class_declaration')!;
       const result = extractor.extract(cls, phpCtx);
 
-      expect(result!.methods[0].annotations).toEqual(['#Route', '#Deprecated']);
+      expect(result!.methods[0].annotations).toEqual(['#Route("/api")', '#Deprecated']);
     });
   });
 

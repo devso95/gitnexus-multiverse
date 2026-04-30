@@ -1,0 +1,57 @@
+# ── Builder ────────────────────────────────────────────────────────────
+FROM node:22-trixie-slim AS builder
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ git && rm -rf /var/lib/apt/lists/*
+
+# Build gitnexus-shared
+COPY gitnexus-shared/package.json gitnexus-shared/package-lock.json ./gitnexus-shared/
+RUN --mount=type=cache,target=/root/.npm npm ci --prefix gitnexus-shared
+COPY gitnexus-shared ./gitnexus-shared
+RUN rm -f gitnexus-shared/tsconfig.tsbuildinfo && npm run build --prefix gitnexus-shared
+
+# Build gitnexus-multiverse-web
+COPY gitnexus-multiverse-web/package.json gitnexus-multiverse-web/package-lock.json ./gitnexus-multiverse-web/
+RUN --mount=type=cache,target=/root/.npm npm ci --prefix gitnexus-multiverse-web
+COPY gitnexus-multiverse-web ./gitnexus-multiverse-web
+RUN npm run build --prefix gitnexus-multiverse-web
+
+# Build gitnexus
+COPY gitnexus/package.json gitnexus/package-lock.json ./gitnexus/
+COPY gitnexus/vendor ./gitnexus/vendor
+RUN ln -sf /usr/bin/bash /bin/sh 2>/dev/null || true
+RUN --mount=type=cache,target=/root/.npm npm ci --prefix gitnexus --ignore-scripts && \
+    cp gitnexus/node_modules/@ladybugdb/core-linux-x64/lbugjs.node \
+       gitnexus/node_modules/@ladybugdb/core/lbugjs.node 2>/dev/null || true && \
+    rm -rf gitnexus/node_modules/onnxruntime-node/bin/darwin \
+           gitnexus/node_modules/onnxruntime-node/bin/win32 \
+           gitnexus/node_modules/onnxruntime-node/bin/linux/arm64 \
+           gitnexus/node_modules/onnxruntime-node/bin/linux/arm \
+           gitnexus/node_modules/onnxruntime-node/bin/linux/riscv64 || true
+COPY gitnexus ./gitnexus
+RUN npm run build --prefix gitnexus && \
+    npm prune --omit=dev --prefix gitnexus && \
+    rm -rf gitnexus/src gitnexus/test
+
+# ── Runtime ────────────────────────────────────────────────────────────
+FROM node:22-trixie-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends curl git && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+RUN mkdir -p /data/gitnexus /data/workspace && chown -R node:node /data
+COPY --from=builder --chown=node:node /app/gitnexus/dist ./gitnexus/dist
+COPY --from=builder --chown=node:node /app/gitnexus/node_modules ./gitnexus/node_modules
+COPY --from=builder --chown=node:node /app/gitnexus/package.json ./gitnexus/package.json
+COPY --from=builder --chown=node:node /app/gitnexus/vendor ./gitnexus/vendor
+COPY --from=builder --chown=node:node /app/gitnexus-shared/package.json ./gitnexus-shared/package.json
+COPY --from=builder --chown=node:node /app/gitnexus-shared/dist ./gitnexus-shared/dist
+COPY --from=builder --chown=node:node /app/gitnexus-multiverse-web/dist ./gitnexus-multiverse-web/dist
+
+USER node
+
+ENV GITNEXUS_HOME=/data/gitnexus \
+    NODE_ENV=production \
+    MV_PORT=3003 \
+    MV_HOST=0.0.0.0
+
+EXPOSE 3003
+CMD ["node", "gitnexus/dist/cli/index.js", "multiverse"]

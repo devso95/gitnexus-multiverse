@@ -193,4 +193,14 @@ program
 
 registerGroupCommands(program);
 
+// ─── Multiverse (cross-service analysis) ────────────────────────────
+
+program
+  .command('multiverse')
+  .description('Start Multiverse server (cross-service analysis engine)')
+  .option('-c, --config <path>', 'Config file path')
+  .option('-p, --port <port>', 'Port number')
+  .option('--host <host>', 'Bind address')
+  .action(createLazyAction(() => import('./multiverse.js'), 'multiverseCommand'));
+
 program.parse(process.argv);

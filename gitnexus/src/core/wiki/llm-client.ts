@@ -102,6 +102,27 @@ export function isReasoningModel(model: string, override?: boolean): boolean {
 }
 
 /**
+ * Returns true if the model does NOT support the `temperature` parameter.
+ */
+function noTemperature(model: string): boolean {
+  const m = model.toLowerCase();
+  return (
+    m.startsWith('o1') ||
+    m.startsWith('o3') ||
+    m.includes('mini') ||
+    m.includes('nano')
+  );
+}
+
+/**
+ * Returns true if the model supports the `temperature` parameter.
+ */
+export function modelSupportsTemperature(model: string): boolean {
+  if (!model) return true;
+  return !noTemperature(model);
+}
+
+/**
  * Build the full chat completions URL, appending ?api-version when provided.
  */
 export function buildRequestUrl(baseUrl: string, apiVersion: string | undefined): string {
@@ -155,8 +176,8 @@ export async function callLLM(
   // max_tokens is deprecated; use max_completion_tokens for all models
   body.max_completion_tokens = config.maxTokens;
 
-  // Only send temperature for non-Azure providers — some Azure models reject non-default values
-  if (!reasoning && !azure && config.temperature !== undefined) {
+  // Only send temperature for models that support it (non-reasoning, non-nano, non-Azure)
+  if (!reasoning && !azure && modelSupportsTemperature(config.model) && config.temperature !== undefined) {
     body.temperature = config.temperature;
   }
 

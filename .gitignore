@@ -107,3 +107,7 @@ local_docs/
 .tmp/
 .agents/
 .context/
+
+# Multiverse
+multiverse-config.yml
+gitnexus/multiverse-config.yml

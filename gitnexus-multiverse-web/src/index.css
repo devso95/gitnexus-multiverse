@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family:
+    'Inter',
+    -apple-system,
+    system-ui,
+    sans-serif;
+}
+
+/* Wiki markdown content styling */
+.wiki-content {
+  color: #e0e0e0;
+  line-height: 1.7;
+}
+.wiki-content h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 2rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.wiki-content h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 1.75rem 0 0.75rem;
+  color: #a29bfe;
+}
+.wiki-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+}
+.wiki-content h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 1rem 0 0.4rem;
+  color: #b0b0b0;
+}
+.wiki-content p {
+  margin: 0.6rem 0;
+}
+.wiki-content a {
+  color: #6c5ce7;
+  text-decoration: underline;
+}
+.wiki-content strong {
+  color: #fff;
+}
+.wiki-content code {
+  background: rgba(108, 92, 231, 0.15);
+  color: #d4cfff;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+.wiki-content pre {
+  background: #16213e;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.wiki-content pre code {
+  background: none;
+  padding: 0;
+  color: #c8d6e5;
+  font-size: 0.82rem;
+}
+.wiki-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.875rem;
+}
+.wiki-content th {
+  background: #16213e;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.wiki-content td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.wiki-content tr:hover td {
+  background: rgba(108, 92, 231, 0.04);
+}
+.wiki-content ul,
+.wiki-content ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+.wiki-content li {
+  margin: 0.25rem 0;
+}
+.wiki-content blockquote {
+  border-left: 3px solid #6c5ce7;
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
+  background: rgba(108, 92, 231, 0.06);
+  border-radius: 0 6px 6px 0;
+  color: #b0b0b0;
+}
+.wiki-content hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 1.5rem 0;
+}

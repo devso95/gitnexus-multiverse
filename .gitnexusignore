@@ -1,0 +1,45 @@
+# GitNexus ignore rules for gitnexus-multiverse (monorepo)
+#
+# This file reduces analysis scope by excluding test/eval/generated files.
+# Result: ~50% fewer files parsed → faster analyze on slow I/O (Windows/Docker).
+# See: https://docs.gitnexus.dev/ignore
+
+# ── Test directories ──────────────────────────────────────────────────────────
+gitnexus/test/
+gitnexus-web/test/
+gitnexus-web/e2e/
+eval/tests/
+gitnexus-test-setup/
+
+# ── Evaluation harness (Python, not source code) ──────────────────────────────
+eval/
+
+# ── Internal tooling / dashboards ─────────────────────────────────────────────
+gitnexus/shadow-parity-dashboard/
+
+# ── Docs & deploy (not code) ──────────────────────────────────────────────────
+docs/
+deploy/
+
+# ── Skills & hook config files (markdown/yaml only) ──────────────────────────
+gitnexus-claude-plugin/
+gitnexus-cursor-integration/
+
+# ── Generated / compiled outputs ──────────────────────────────────────────────
+gitnexus/dist/
+gitnexus-multiverse-web/dist/
+gitnexus-web/dist/
+gitnexus-shared/dist/
+
+# ── Test file patterns (anywhere in the tree) ─────────────────────────────────
+**/*.test.ts
+**/*.spec.ts
+**/*.test.tsx
+**/*.spec.tsx
+**/*.test.js
+**/*.spec.js
+
+# ── Lock files & large generated assets ───────────────────────────────────────
+*.lock
+uv.lock
+

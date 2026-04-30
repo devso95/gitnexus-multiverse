@@ -243,12 +243,11 @@ function extractTsJsVisibility(node: SyntaxNode): MethodVisibility {
  */
 function extractTsJsDecorators(node: SyntaxNode): string[] {
   const decorators: string[] = [];
-  // Walk backwards via previousNamedSibling to collect consecutive decorator siblings.
-  // This avoids the O(N) index-finding scan through the parent's children.
   let sibling = node.previousNamedSibling;
   while (sibling && sibling.type === 'decorator') {
-    const name = extractDecoratorName(sibling);
-    if (name) decorators.unshift(name);
+    // Use full decorator text to preserve arguments (e.g. @Route("/path"))
+    const text = sibling.text?.trim();
+    if (text) decorators.unshift(text.startsWith('@') ? text : '@' + text);
     sibling = sibling.previousNamedSibling;
   }
   return decorators;

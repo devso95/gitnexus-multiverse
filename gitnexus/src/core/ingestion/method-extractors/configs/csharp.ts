@@ -164,8 +164,8 @@ function extractCSharpAnnotations(node: SyntaxNode): string[] {
     for (let j = 0; j < child.namedChildCount; j++) {
       const attr = child.namedChild(j);
       if (!attr || attr.type !== 'attribute') continue;
-      const nameNode = attr.childForFieldName('name');
-      if (nameNode) annotations.push('@' + nameNode.text);
+      const text = attr.text?.trim();
+      if (text) annotations.push(text.startsWith('@') ? text : '@' + text);
     }
   }
   return annotations;

@@ -82,7 +82,11 @@
     "tree-sitter-ruby": "^0.23.1",
     "tree-sitter-rust": "0.23.1",
     "tree-sitter-typescript": "^0.23.2",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "neo4j-driver": "^6.0.1",
+    "bcryptjs": "^3.0.2",
+    "yaml": "^2.8.0",
+    "gitnexus-shared": "file:../gitnexus-shared"
   },
   "optionalDependencies": {
     "node-addon-api": "^8.0.0",
@@ -100,7 +104,6 @@
     "@types/node": "^25.6.0",
     "@types/uuid": "^11.0.0",
     "@vitest/coverage-v8": "^4.0.18",
-    "gitnexus-shared": "file:../gitnexus-shared",
     "tsx": "^4.0.0",
     "typescript": "^5.4.5",
     "vitest": "^4.0.18"

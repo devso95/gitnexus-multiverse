@@ -13,7 +13,7 @@
  */
 
 import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
-import { isDev } from '../utils/env.js';
+import { isDev, isAnalyzeTiming } from '../utils/env.js';
 
 /**
  * Validate that the phases form a valid dependency graph (no cycles, all deps present).
@@ -171,6 +171,7 @@ export async function runPipeline(
     throw err;
   }
   const results = new Map<string, PhaseResult<unknown>>();
+  const pipelineTiming: Array<{ name: string; durationMs: number }> = [];
 
   for (const phase of sorted) {
     const start = Date.now();
@@ -219,9 +220,24 @@ export async function runPipeline(
       durationMs,
     });
 
-    if (isDev) {
+    if (isAnalyzeTiming()) {
+      const elapsed = Date.now() - ctx.pipelineStart;
+      const flag = durationMs > 10_000 ? ' ⚠ SLOW' : '';
+      console.log(
+        `[analyze:timing] ✓ phase=${phase.name} duration=${durationMs}ms elapsed=${elapsed}ms${flag}`,
+      );
+    } else if (isDev) {
       console.log(`✓ Phase: ${phase.name} (${durationMs}ms)`);
     }
+    pipelineTiming.push({ name: phase.name, durationMs });
+  }
+
+  if (isAnalyzeTiming()) {
+    const totalMs = pipelineTiming.reduce((s, p) => s + p.durationMs, 0);
+    const slowest = [...pipelineTiming].sort((a, b) => b.durationMs - a.durationMs).slice(0, 3);
+    console.log(
+      `[analyze:timing] pipeline complete total=${totalMs}ms | slowest: ${slowest.map((p) => `${p.name}=${p.durationMs}ms`).join(', ')}`,
+    );
   }
 
   return results;

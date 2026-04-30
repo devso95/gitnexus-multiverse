@@ -65,7 +65,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { isDev } from '../utils/env.js';
+import { isDev, isAnalyzeTiming } from '../utils/env.js';
 import { synthesizeWildcardImportBindings, needsSynthesis } from './wildcard-synthesis.js';
 import { extractORMQueriesInline } from './orm-extraction.js';
 
@@ -275,11 +275,24 @@ export async function runChunkedParseAndResolve(
     for (let chunkIdx = 0; chunkIdx < numChunks; chunkIdx++) {
       const chunkPaths = chunks[chunkIdx];
 
+      const ioStart = Date.now();
       const chunkContents = await readFileContents(repoPath, chunkPaths);
+      const ioMs = Date.now() - ioStart;
+
       const chunkFiles = chunkPaths
         .filter((p) => chunkContents.has(p))
         .map((p) => ({ path: p, content: chunkContents.get(p)! }));
 
+      const chunkBytes = chunkFiles.reduce((s, f) => s + f.content.length, 0);
+
+      if (isAnalyzeTiming()) {
+        const chunkMB = (chunkBytes / (1024 * 1024)).toFixed(1);
+        console.log(
+          `[analyze:timing] chunk ${chunkIdx + 1}/${numChunks}: io=${ioMs}ms files=${chunkFiles.length} size=${chunkMB}MB mode=${workerPool ? 'workers' : 'sequential'}`,
+        );
+      }
+
+      const parseStart = Date.now();
       const chunkWorkerData = await processParsing(
         graph,
         chunkFiles,
@@ -303,6 +316,16 @@ export async function runChunkedParseAndResolve(
         },
         workerPool,
       );
+
+      const parseMs = Date.now() - parseStart;
+      if (isAnalyzeTiming()) {
+        const resolvedFiles = chunkFiles.length;
+        const nodesNow = graph.nodeCount;
+        const flag = parseMs > 30_000 ? ' ⚠ SLOW' : '';
+        console.log(
+          `[analyze:timing] chunk ${chunkIdx + 1}/${numChunks}: parse=${parseMs}ms files=${resolvedFiles} nodes=${nodesNow} mode=${workerPool ? 'workers' : 'sequential'}${flag}`,
+        );
+      }
 
       const chunkBasePercent = 20 + (filesParsedSoFar / totalParseable) * 62;
 

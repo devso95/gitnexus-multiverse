@@ -77,6 +77,13 @@ function extractDecoratorName(decorator: SyntaxNode): string | undefined {
   return undefined;
 }
 
+/** Full decorator text including arguments (e.g. @app.route("/path")) */
+function extractDecoratorText(decorator: SyntaxNode): string | undefined {
+  const text = decorator.text?.trim();
+  if (!text) return undefined;
+  return text.startsWith('@') ? text : '@' + text;
+}
+
 function hasDecorator(node: SyntaxNode, name: string): boolean {
   const decorators = collectDecorators(node);
   for (const dec of decorators) {
@@ -312,8 +319,8 @@ export const pythonMethodConfig: MethodExtractionConfig = {
     const decorators = collectDecorators(node);
     const annotations: string[] = [];
     for (const dec of decorators) {
-      const name = extractDecoratorName(dec);
-      if (name) annotations.push(name);
+      const text = extractDecoratorText(dec);
+      if (text) annotations.push(text);
     }
     return annotations;
   },

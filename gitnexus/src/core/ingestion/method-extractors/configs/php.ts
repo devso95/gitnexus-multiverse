@@ -252,10 +252,8 @@ function extractPhpAnnotations(node: SyntaxNode): string[] {
       for (let k = 0; k < group.namedChildCount; k++) {
         const attr = group.namedChild(k);
         if (!attr || attr.type !== 'attribute') continue;
-        const nameNode = attr.firstNamedChild;
-        if (nameNode && nameNode.type === 'name') {
-          annotations.push('#' + nameNode.text);
-        }
+        const text = attr.text?.trim();
+        if (text) annotations.push('#' + text);
       }
     }
   }

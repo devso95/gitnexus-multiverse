@@ -1,0 +1,366 @@
+{
+  "sinkPatterns": [
+    {
+      "id": "spring-rest-template",
+      "name": "Spring RestTemplate",
+      "category": "http",
+      "methodPattern": "restTemplate\\.(getForObject|getForEntity|postForObject|postForEntity|exchange|put|delete|patchForObject)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "spring-web-client",
+      "name": "Spring WebClient",
+      "category": "http",
+      "methodPattern": "webClient\\.(get|post|put|delete|patch)\\(\\)",
+      "targetArgIndex": -1,
+      "enabled": true
+    },
+    {
+      "id": "spring-feign-client",
+      "name": "Spring FeignClient",
+      "category": "http",
+      "methodPattern": "@FeignClient",
+      "targetArgIndex": -1,
+      "enabled": true
+    },
+    {
+      "id": "java-http-client",
+      "name": "Java HttpClient",
+      "category": "http",
+      "methodPattern": "HttpRequest\\.newBuilder|httpClient\\.send",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "okhttp-client",
+      "name": "OkHttp Client",
+      "category": "http",
+      "methodPattern": "okHttpClient\\.(newCall|execute)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "spring-kafka-template",
+      "name": "Spring KafkaTemplate",
+      "category": "kafka",
+      "methodPattern": "kafkaTemplate\\.send",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "spring-kafka-producer-record",
+      "name": "Kafka ProducerRecord",
+      "category": "kafka",
+      "methodPattern": "new ProducerRecord",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "kafka-producer-send",
+      "name": "Kafka Producer.send",
+      "category": "kafka",
+      "methodPattern": "producer\\.send",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "spring-rabbit-template",
+      "name": "Spring RabbitTemplate",
+      "category": "rabbit",
+      "methodPattern": "rabbitTemplate\\.(convertAndSend|send)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "spring-amqp-template",
+      "name": "Spring AmqpTemplate",
+      "category": "rabbit",
+      "methodPattern": "amqpTemplate\\.(convertAndSend|send)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "spring-redis-template",
+      "name": "Spring RedisTemplate publish",
+      "category": "redis",
+      "methodPattern": "redisTemplate\\.convertAndSend",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "spring-jms-template",
+      "name": "Spring JmsTemplate",
+      "category": "jms",
+      "methodPattern": "jmsTemplate\\.(convertAndSend|send)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "java-grpc-stub",
+      "name": "Java gRPC Stub",
+      "category": "grpc",
+      "methodPattern": "Stub\\.(\\w+)\\(",
+      "targetArgIndex": -1,
+      "enabled": true
+    },
+    {
+      "id": "node-axios",
+      "name": "Axios HTTP Client",
+      "category": "http",
+      "methodPattern": "axios\\.(get|post|put|delete|patch|request)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "node-fetch",
+      "name": "Node fetch()",
+      "category": "http",
+      "methodPattern": "\\bfetch\\(",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "node-got",
+      "name": "Node got HTTP",
+      "category": "http",
+      "methodPattern": "got\\.(get|post|put|delete|patch)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "node-superagent",
+      "name": "Node SuperAgent",
+      "category": "http",
+      "methodPattern": "superagent\\.(get|post|put|delete|patch)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "node-kafkajs-producer",
+      "name": "KafkaJS Producer",
+      "category": "kafka",
+      "methodPattern": "producer\\.send\\(|producer\\.sendBatch\\(",
+      "targetArgIndex": -1,
+      "enabled": true
+    },
+    {
+      "id": "node-amqplib",
+      "name": "Node amqplib",
+      "category": "rabbit",
+      "methodPattern": "channel\\.(publish|sendToQueue)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "node-redis-publish",
+      "name": "Node Redis publish",
+      "category": "redis",
+      "methodPattern": "redis\\.(publish|pSubscribe)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "node-bullmq",
+      "name": "BullMQ Queue add",
+      "category": "queue",
+      "methodPattern": "queue\\.add\\(|Queue\\('",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "python-requests",
+      "name": "Python requests",
+      "category": "http",
+      "methodPattern": "requests\\.(get|post|put|delete|patch)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "python-httpx",
+      "name": "Python httpx",
+      "category": "http",
+      "methodPattern": "httpx\\.(get|post|put|delete|patch|AsyncClient)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "python-aiohttp",
+      "name": "Python aiohttp",
+      "category": "http",
+      "methodPattern": "session\\.(get|post|put|delete|patch)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "python-kafka-producer",
+      "name": "Python kafka-python",
+      "category": "kafka",
+      "methodPattern": "producer\\.send\\(|KafkaProducer\\(",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "python-confluent-kafka",
+      "name": "Python confluent-kafka",
+      "category": "kafka",
+      "methodPattern": "producer\\.produce\\(",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "python-celery-send",
+      "name": "Python Celery send_task",
+      "category": "queue",
+      "methodPattern": "(send_task|apply_async|delay)\\(",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "python-pika",
+      "name": "Python pika (RabbitMQ)",
+      "category": "rabbit",
+      "methodPattern": "channel\\.basic_publish\\(",
+      "targetArgIndex": -1,
+      "enabled": true
+    },
+    {
+      "id": "go-http-client",
+      "name": "Go net/http Client",
+      "category": "http",
+      "methodPattern": "http\\.(Get|Post|Do|NewRequest)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "go-grpc-dial",
+      "name": "Go gRPC Dial",
+      "category": "grpc",
+      "methodPattern": "grpc\\.Dial\\(",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "dotnet-http-client",
+      "name": ".NET HttpClient",
+      "category": "http",
+      "methodPattern": "_httpClient\\.(GetAsync|PostAsync|PutAsync|DeleteAsync|SendAsync)",
+      "targetArgIndex": 0,
+      "enabled": true
+    },
+    {
+      "id": "dotnet-masstransit",
+      "name": ".NET MassTransit Publish",
+      "category": "rabbit",
+      "methodPattern": "(Publish|Send)Async\\<",
+      "targetArgIndex": -1,
+      "enabled": true
+    }
+  ],
+  "listenerAnnotations": [
+    {
+      "annotation": "KafkaListener",
+      "type": "kafka",
+      "topicAttribute": "topics",
+      "enabled": true
+    },
+    {
+      "annotation": "RabbitListener",
+      "type": "rabbit",
+      "topicAttribute": "queues",
+      "enabled": true
+    },
+    {
+      "annotation": "RabbitHandler",
+      "type": "rabbit",
+      "enabled": true
+    },
+    {
+      "annotation": "EventListener",
+      "type": "event",
+      "enabled": true
+    },
+    {
+      "annotation": "TransactionalEventListener",
+      "type": "event",
+      "enabled": true
+    },
+    {
+      "annotation": "StreamListener",
+      "type": "redis",
+      "topicAttribute": "value",
+      "enabled": true
+    },
+    {
+      "annotation": "JmsListener",
+      "type": "jms",
+      "topicAttribute": "destination",
+      "enabled": true
+    },
+    {
+      "annotation": "SqsListener",
+      "type": "sqs",
+      "topicAttribute": "value",
+      "enabled": true
+    },
+    {
+      "annotation": "GrpcService",
+      "type": "grpc",
+      "enabled": true
+    },
+    {
+      "annotation": "Consumer",
+      "type": "rabbit",
+      "enabled": true
+    }
+  ],
+  "entryPointAnnotations": [
+    {
+      "annotation": "Scheduled",
+      "type": "scheduled",
+      "scheduleAttribute": "cron",
+      "enabled": true
+    },
+    {
+      "annotation": "Schedules",
+      "type": "scheduled",
+      "enabled": true
+    },
+    {
+      "annotation": "Job",
+      "type": "job",
+      "scheduleAttribute": "value",
+      "enabled": true
+    },
+    {
+      "annotation": "Recurring",
+      "type": "job",
+      "scheduleAttribute": "id",
+      "enabled": true
+    },
+    {
+      "annotation": "RecurringJob",
+      "type": "job",
+      "scheduleAttribute": "id",
+      "enabled": true
+    },
+    {
+      "annotation": "periodic_task",
+      "type": "scheduled",
+      "scheduleAttribute": "run_every",
+      "enabled": true
+    },
+    {
+      "annotation": "crontab",
+      "type": "scheduled",
+      "scheduleAttribute": "minute",
+      "enabled": true
+    },
+    {
+      "annotation": "TimerTrigger",
+      "type": "scheduled",
+      "scheduleAttribute": "schedule",
+      "enabled": true
+    }
+  ]
+}

@@ -44,6 +44,7 @@ export type NodeLabel =
   | 'Template'
   | 'Section'
   | 'Route'
+  | 'Listener'
   | 'Tool';
 
 export type NodeProperties = {

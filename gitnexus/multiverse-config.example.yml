@@ -1,0 +1,140 @@
+# GitNexus Multiverse Configuration
+# Environment variables: ${VAR} or ${VAR:-default}
+#
+# Required env vars:
+#   NEO4J_PASSWORD     — Neo4j password
+#   MV_ADMIN_USER      — Admin username
+#   MV_ADMIN_PASS      — Admin password (will be bcrypt-hashed at startup)
+
+server:
+  port: ${MV_PORT:-3003}
+  host: ${MV_HOST:-0.0.0.0}
+
+neo4j:
+  uri: ${NEO4J_URI:-bolt://localhost:7687}
+  user: ${NEO4J_USER:-neo4j}
+  password: ${NEO4J_PASSWORD}
+  database: ${NEO4J_DATABASE:-neo4j}
+
+workspace:
+  dir: ${MV_WORKSPACE:-/var/tmp/kiro-cli/workspace/multiverse-repos}
+  gitBase: ${MV_GIT_BASE:-https://git.example.com/scm}
+
+# Spring Cloud Config Server integration
+cloudConfig:
+  baseUrl: ${MV_CLOUD_CONFIG_URL:-https://api.example.com/config/v2}
+  defaultProfile: ${MV_CLOUD_CONFIG_PROFILE:-default}
+  enabled: ${MV_CLOUD_CONFIG_ENABLED:-true}
+  timeoutMs: 10000
+
+analyze:
+  maxConcurrency: ${MV_ANALYZE_CONCURRENCY:-3}
+  gitTimeoutMs: 120000
+  cloneTimeoutMs: 300000
+
+# Auth configured via MV_ADMIN_USER + MV_ADMIN_PASS env vars
+auth:
+  users: []
+
+services: []
+
+# ── Cross-Service Detection Patterns ──
+# Built-in defaults now live in src/multiverse/config/default-patterns.json.
+# Custom JSON overrides/additions are auto-loaded from ./multiverse-patterns.custom.json
+# (same directory as this multiverse-config.yml) if that file exists.
+#
+# Add inline YAML sink patterns here only if you want config-local overrides.
+# These merge with built-in patterns. Override by id, or add new ones.
+# Built-in: spring-rest-template, spring-kafka-template,
+#           spring-rabbit-template, spring-redis-template, etc.
+#
+# sinkPatterns:
+#   - id: my-custom-http
+#     name: My Custom HTTP Client
+#     category: http          # http | kafka | rabbit | redis | grpc | ...
+#     methodPattern: myClient\.(get|post)
+#     targetArgIndex: 0       # which arg has the URL/topic (-1 = unknown)
+#     enabled: true
+#   - id: spring-web-client   # override built-in: enable WebClient detection
+#     enabled: true
+sinkPatterns: []
+
+# Listener annotation mappings — detect inbound handlers (consumers).
+# These merge with built-in annotations and ./multiverse-patterns.custom.json.
+# Override by annotation name.
+# Built-in: KafkaListener, RabbitListener, RabbitHandler, EventListener,
+#           TransactionalEventListener, StreamListener
+#
+# listenerAnnotations:
+#   - annotation: GrpcService
+#     type: grpc
+#     topicAttribute: value
+#     enabled: true
+#   - annotation: SqsListener     # AWS SQS
+#     type: sqs
+#     topicAttribute: value
+#     enabled: true
+listenerAnnotations: []
+
+# ── Entry Point Annotations ──
+# Detect @Scheduled, @Job, @Recurring as service entry points.
+# These create Listener nodes so they appear in business groups and wiki.
+# These also merge with ./multiverse-patterns.custom.json automatically.
+# Built-in: Scheduled, Schedules, Job, Recurring, RecurringJob
+#
+# entryPointAnnotations:
+#   - annotation: MyCustomJob
+#     type: job
+#     scheduleAttribute: value
+#     enabled: true
+entryPointAnnotations: []
+
+# ── Wiki Generation ──
+# Output structured markdown docs for AI retrieval via MCP.
+# Set outputDir to write wiki files to disk after analyze.
+#
+# wiki:
+#   outputDir: /path/to/tera-project/services
+#   autoGenerate: true
+# LLM for wiki enrichment (optional — falls back to template-based if not set)
+# Supports any OpenAI-compatible endpoint.
+wiki:
+  outputDir: ${MV_WIKI_OUTPUT_DIR:-}
+  autoGenerate: ${MV_WIKI_AUTO_GENERATE:-false}
+  llm:
+    baseUrl: https://api.openai.com
+    apiKey: ${OPENAI_API_KEY}
+    model: ${OPENAI_MODEL_NAME}
+    maxTokens: 8192
+
+# ── Graph Pattern Rules ──
+# Language-agnostic entry point detection via graph traversal.
+# Instead of regex on source code, rules match node labels + edge patterns
+# in the already-parsed graph (Class, Method, Function, EXTENDS, CALLS, etc.).
+# Built-in rules: jobrunr-abstract-job, spring-scheduled-method,
+#                 python-celery-task, node-cron-job
+#
+# graphRules:
+#   - id: my-custom-job
+#     name: "My Custom Job Framework"
+#     type: job
+#     enabled: true
+#     match:
+#       - node: cls
+#         label: Class
+#         where:
+#           ancestors:
+#             edge: EXTENDS
+#             label: Class
+#             name: BaseJobHandler
+#             maxDepth: 3
+#       - node: method
+#         label: Method
+#         from: cls
+#         edge: HAS_METHOD
+#         where:
+#           name: execute
+#     emit:
+#       name: "Job:${cls.name}"
+#       topic: "${cls.name}"
+graphRules: []

@@ -106,15 +106,18 @@ export function finalizeScopeModel(
   const allScopes: Scope[] = [];
   const allDefs: SymbolDefinition[] = [];
   const moduleEntries: { filePath: string; moduleScopeId: ScopeId }[] = [];
-  const allReferenceSites = [] as ReturnType<typeof collectReferenceSites>;
+  const allReferenceSites: ReturnType<typeof collectReferenceSites> = [];
 
   for (const file of parsedFiles) {
     for (const s of file.scopes) allScopes.push(s);
     for (const d of file.localDefs) allDefs.push(d);
     moduleEntries.push({ filePath: file.filePath, moduleScopeId: file.moduleScope });
+    // Collect reference sites inline to avoid push(...largeArray) which
+    // converts array elements to function arguments and overflows the call
+    // stack for large TypeScript workspaces (RangeError: Maximum call stack
+    // size exceeded). Using a for-of loop is stack-safe for any array size.
+    for (const site of file.referenceSites) allReferenceSites.push(site);
   }
-  // References kept out of the loop above to centralize list-init.
-  allReferenceSites.push(...collectReferenceSites(parsedFiles));
 
   const scopeTree = buildScopeTree(allScopes);
   const defs = buildDefIndex(allDefs);

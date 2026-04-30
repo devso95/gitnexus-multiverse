@@ -32,8 +32,11 @@ function extractAnnotations(node: SyntaxNode, modifierType: string): string[] {
       for (let j = 0; j < child.namedChildCount; j++) {
         const mod = child.namedChild(j);
         if (mod && (mod.type === 'marker_annotation' || mod.type === 'annotation')) {
-          const nameNode = mod.childForFieldName('name') ?? mod.firstNamedChild;
-          if (nameNode) annotations.push('@' + nameNode.text);
+          // marker_annotation has no arguments (e.g. @Override)
+          // annotation has arguments (e.g. @GetMapping("/path"))
+          // Use full text to preserve annotation values for downstream consumers
+          const text = mod.text?.trim();
+          if (text) annotations.push(text.startsWith('@') ? text : '@' + text);
         }
       }
     }

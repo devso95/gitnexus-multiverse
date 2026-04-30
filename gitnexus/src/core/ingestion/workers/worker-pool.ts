@@ -3,6 +3,9 @@ import os from 'node:os';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+const TIMING =
+  process.env.GITNEXUS_ANALYZE_TIMING === '1' || process.env.NODE_ENV === 'development';
+
 export interface WorkerPool {
   /**
    * Dispatch items across workers. Items are split into chunks (one per worker),
@@ -36,8 +39,10 @@ type WorkerOutgoingMessage =
 const SUB_BATCH_SIZE = 1500;
 
 /** Per sub-batch timeout. If a single sub-batch takes longer than this,
- *  likely a pathological file (e.g. minified 50MB JS). Fail fast. */
-const SUB_BATCH_TIMEOUT_MS = 30_000;
+ *  likely a pathological file (e.g. minified 50MB JS). Fail fast.
+ *  120s default accommodates slow bind-mount I/O (e.g. Windows/Docker Desktop).
+ *  Override via GITNEXUS_WORKER_TIMEOUT_MS env var. */
+const SUB_BATCH_TIMEOUT_MS = Number(process.env.GITNEXUS_WORKER_TIMEOUT_MS ?? 120_000);
 
 /**
  * Create a pool of worker threads.
@@ -73,9 +78,14 @@ export const createWorkerPool = (workerUrl: URL, poolSize?: number): WorkerPool 
 
     const promises = chunks.map((chunk, i) => {
       const worker = workers[i];
+      const workerStart = Date.now();
+      if (TIMING) {
+        console.log(`[analyze:timing] worker ${i} start files=${chunk.length}`);
+      }
       return new Promise<TResult>((resolve, reject) => {
         let settled = false;
         let subBatchTimer: ReturnType<typeof setTimeout> | null = null;
+        let subBatchCount = 0;
 
         const cleanup = () => {
           if (subBatchTimer) clearTimeout(subBatchTimer);
@@ -109,6 +119,12 @@ export const createWorkerPool = (workerUrl: URL, poolSize?: number): WorkerPool 
           }
           const subBatch = chunk.slice(start, start + SUB_BATCH_SIZE);
           subBatchIdx++;
+          subBatchCount++;
+          if (TIMING) {
+            console.log(
+              `[analyze:timing] worker ${i} sub-batch ${subBatchCount} files=${subBatch.length}`,
+            );
+          }
           resetSubBatchTimer();
           worker.postMessage({ type: 'sub-batch', files: subBatch });
         };
@@ -132,6 +148,13 @@ export const createWorkerPool = (workerUrl: URL, poolSize?: number): WorkerPool 
           } else if (msg.type === 'result') {
             settled = true;
             cleanup();
+            if (TIMING) {
+              const workerMs = Date.now() - workerStart;
+              const flag = workerMs > 30_000 ? ' ⚠ SLOW' : '';
+              console.log(
+                `[analyze:timing] worker ${i} done duration=${workerMs}ms sub-batches=${subBatchCount}${flag}`,
+              );
+            }
             resolve(msg.data as TResult);
           }
         };

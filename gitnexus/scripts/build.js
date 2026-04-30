@@ -19,13 +19,19 @@ const SHARED_ROOT = path.resolve(ROOT, '..', 'gitnexus-shared');
 const DIST = path.join(ROOT, 'dist');
 const SHARED_DEST = path.join(DIST, '_shared');
 
+// Resolve tsc binary: prefer local node_modules/.bin/tsc, fall back to npx tsc
+function tscCmd(cwd) {
+  const local = path.join(cwd, 'node_modules', '.bin', 'tsc');
+  return fs.existsSync(local) ? local : 'npx tsc';
+}
+
 // ── 1. Build gitnexus-shared ───────────────────────────────────────
 console.log('[build] compiling gitnexus-shared…');
-execSync('npx tsc', { cwd: SHARED_ROOT, stdio: 'inherit' });
+execSync(tscCmd(SHARED_ROOT), { cwd: SHARED_ROOT, stdio: 'inherit' });
 
 // ── 2. Build gitnexus ──────────────────────────────────────────────
 console.log('[build] compiling gitnexus…');
-execSync('npx tsc', { cwd: ROOT, stdio: 'inherit' });
+execSync(tscCmd(ROOT), { cwd: ROOT, stdio: 'inherit' });
 
 // ── 3. Copy shared dist ────────────────────────────────────────────
 console.log('[build] copying shared module into dist/_shared…');
@@ -63,6 +69,18 @@ function walk(dir, extensions, cb) {
     }
   }
 }
+
+function copyJsonAssets(srcDir, destDir) {
+  walk(srcDir, ['.json'], (srcFile) => {
+    const relPath = path.relative(srcDir, srcFile);
+    const destFile = path.join(destDir, relPath);
+    fs.mkdirSync(path.dirname(destFile), { recursive: true });
+    fs.copyFileSync(srcFile, destFile);
+  });
+}
+
+console.log('[build] copying JSON assets into dist…');
+copyJsonAssets(path.join(ROOT, 'src'), DIST);
 
 walk(DIST, ['.js', '.d.ts'], rewriteFile);
 

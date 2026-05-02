@@ -1,5 +1,5 @@
 # GitNexus
-⚠️ Important Notice:** GitNexus has NO official cryptocurrency, token, or coin. Any token/coin using the GitNexus name on Pump.fun or any other platform is **not affiliated with, endorsed by, or created by** this project or its maintainers. Do not purchase any cryptocurrency claiming association with GitNexus.
+⚠️ **Important Notice:** GitNexus has NO official cryptocurrency, token, or coin. Any token/coin using the GitNexus name on Pump.fun or any other platform is **not affiliated with, endorsed by, or created by** this project or its maintainers. Do not purchase any cryptocurrency claiming association with GitNexus.
 
 <div align="center">
 
@@ -26,6 +26,33 @@
 **Building nervous system for agent context.**
 
 Indexes any codebase into a knowledge graph — every dependency, call chain, cluster, and execution flow — then exposes it through smart tools so AI agents never miss code.
+
+---
+
+## 🌌 **Multiverse: Cross-Service Analysis**
+
+**NEW:** This repository now includes **Multiverse**, GitNexus's extension for **microservice architecture analysis**. Multiverse detects how services communicate via HTTP APIs, message queues, and library dependencies — building a unified service graph that shows the entire system topology.
+
+### Why Multiverse?
+- **Understand service boundaries** — Map which services talk to each other and how
+- **Detect communication patterns** — HTTP APIs, Kafka topics, library imports at a glance
+- **Impact analysis across services** — See what breaks when you change a service
+- **Auto-resolve transports** — Map API endpoints and message topics to their handlers
+- **Visualize microservice architecture** — React admin UI with service maps, dependency graphs, and cross-service impact analysis
+
+### Multiverse Features
+✅ **Service Graph** — HTTP APIs, Kafka topics, gRPC services as hub nodes  
+✅ **Gateway Detection** — Find all client classes that call external services  
+✅ **Auto-linking** — Automatically match endpoints to handlers across service boundaries  
+✅ **Config Resolution** — Support for Spring Cloud Config, environment variables  
+✅ **Business Grouping** — Organize entry points by business domain  
+✅ **Web Admin UI** — Dashboard, service maps, channel explorer, attention mode  
+✅ **REST API** — Full service, graph, and analysis APIs for integration  
+✅ **MCP Tools** — Integrated with GitNexus MCP for AI agent analysis  
+
+**[→ See Multiverse Guide](gitnexus/MULTIVERSE.md)** for architecture, API docs, and getting started.
+
+---
 
 
 
@@ -761,3 +788,4 @@ The wiki generator reads the indexed graph structure, groups files into modules 
 - [transformers.js](https://huggingface.co/docs/transformers.js) — Browser ML
 - [Graphology](https://graphology.github.io/) — Graph data structures
 - [MCP](https://modelcontextprotocol.io/) — Model Context Protocol
+
